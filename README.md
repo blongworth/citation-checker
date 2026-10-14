@@ -9,6 +9,7 @@ in an external record, never in a model's opinion.
 
 ```sh
 uv run citation-checker check "Harris, C. R., et al. (2020). Array programming with NumPy. Nature."
+uv run citation-checker check -f refs.bib          # BibTeX; results keyed by entry
 uv run citation-checker check -f refs.txt          # one citation per line
 uv run citation-checker check -f refs.txt --json   # machine-readable output
 ```
@@ -29,6 +30,7 @@ allows more concurrent requests. Exit status is 1 if any citation is `not_found`
 
 ## Layout
 
+- `ingest.py` – read `.bib` (bibtexparser) or plain-text citation files
 - `identifiers.py` – DOI extraction
 - `resolvers/` – `Resolver` protocol; Crossref implementation
 - `match.py` – fuzzy scoring of a raw citation against a candidate record

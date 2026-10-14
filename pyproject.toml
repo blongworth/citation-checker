@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "bibtexparser>=2.1.0",
     "httpx>=0.28.1",
     "pydantic>=2.14.1",
     "rapidfuzz>=3.14.5",

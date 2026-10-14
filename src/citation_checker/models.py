@@ -13,6 +13,13 @@ class Verdict(str, Enum):
     NEEDS_REVIEW = "needs_review"
 
 
+class RawCitation(BaseModel):
+    """A citation as given by the user, before any lookup."""
+
+    text: str
+    key: str | None = None  # e.g. a BibTeX key
+
+
 class Candidate(BaseModel):
     """A bibliographic record returned by an external source."""
 
@@ -35,6 +42,7 @@ class MatchScore(BaseModel):
 
 class CheckResult(BaseModel):
     citation: str
+    key: str | None = None
     verdict: Verdict
     doi_in_citation: str | None = None
     match: Candidate | None = None

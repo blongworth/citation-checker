@@ -5,9 +5,11 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
-from citation_checker.models import Verdict
+from citation_checker.ingest import read_citations
+from citation_checker.models import RawCitation, Verdict
 from citation_checker.pipeline import check_many
 
 app = typer.Typer(add_completion=False, help="Check that citations actually exist.")
@@ -27,11 +29,6 @@ def _root() -> None:
     """Check that citations actually exist."""
 
 
-def read_citations(path: Path) -> list[str]:
-    """One citation per non-empty line."""
-    return [line.strip() for line in path.read_text().splitlines() if line.strip()]
-
-
 @app.command()
 def check(
     citations: Annotated[
@@ -40,7 +37,10 @@ def check(
     file: Annotated[
         Path | None,
         typer.Option(
-            "--file", "-f", exists=True, help="Text file, one citation per line."
+            "--file",
+            "-f",
+            exists=True,
+            help="BibTeX (.bib) file, or text file with one citation per line.",
         ),
     ] = None,
     as_json: Annotated[
@@ -55,9 +55,12 @@ def check(
     ] = None,
 ) -> None:
     """Check citations; exits 1 if any are not found or misattributed."""
-    items = list(citations or [])
+    items = [RawCitation(text=c) for c in citations or []]
     if file:
-        items += read_citations(file)
+        try:
+            items += read_citations(file)
+        except ValueError as e:
+            raise typer.BadParameter(str(e)) from e
     if not items:
         raise typer.BadParameter("give citations as arguments or with --file")
 
@@ -78,11 +81,13 @@ def check(
                 filter(None, [r.note, *(r.score.discrepancies if r.score else [])])
             )
             table.add_row(
-                r.citation,
+                f"[bold]{escape(r.key)}[/]\n{escape(r.citation)}"
+                if r.key
+                else escape(r.citation),
                 f"[{STYLE[r.verdict]}]{r.verdict.value}[/]",
                 f"{r.score.total:.2f}" if r.score else "",
-                rec,
-                notes,
+                escape(rec),
+                escape(notes),
             )
         Console().print(table)
 

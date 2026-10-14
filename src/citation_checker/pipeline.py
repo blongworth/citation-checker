@@ -4,7 +4,7 @@ import httpx
 
 from citation_checker.identifiers import extract_doi
 from citation_checker.match import score
-from citation_checker.models import CheckResult, Verdict
+from citation_checker.models import CheckResult, RawCitation, Verdict
 from citation_checker.resolvers.crossref import (
     POLITE_CONCURRENCY,
     PUBLIC_CONCURRENCY,
@@ -76,7 +76,9 @@ async def check(
 
 
 async def check_many(
-    citations: list[str], mailto: str | None = None, concurrency: int | None = None
+    citations: list[str | RawCitation],
+    mailto: str | None = None,
+    concurrency: int | None = None,
 ) -> list[CheckResult]:
     if concurrency is None:
         concurrency = POLITE_CONCURRENCY if mailto else PUBLIC_CONCURRENCY
@@ -86,15 +88,19 @@ async def check_many(
         timeout=30, headers=headers, follow_redirects=True
     ) as client:
 
-        async def one(c: str) -> CheckResult:
+        async def one(c: str | RawCitation) -> CheckResult:
+            if isinstance(c, str):
+                c = RawCitation(text=c)
             async with sem:
                 try:
-                    return await check(c, client, mailto)
+                    result = await check(c.text, client, mailto)
                 except httpx.HTTPError as e:
-                    return CheckResult(
-                        citation=c,
+                    result = CheckResult(
+                        citation=c.text,
                         verdict=Verdict.NEEDS_REVIEW,
                         note=f"lookup failed: {type(e).__name__}: {e}".splitlines()[0],
                     )
+            result.key = c.key
+            return result
 
         return await asyncio.gather(*(one(c) for c in citations))
